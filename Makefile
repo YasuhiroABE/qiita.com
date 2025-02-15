@@ -20,3 +20,15 @@ version:
 .PHONY: update
 update:
 	npm install @qiita/qiita-cli@latest
+
+.PHONY: clean
+clean:
+	find . -type f -name '*~' -exec rm -f {} \;
+
+.PHONY: pull
+pull:
+	npx qiita pull
+
+.PHONY: status
+status:
+	git status
