@@ -25,6 +25,10 @@ $ git add public/20250215_newarticle.md
 $ git push
 ```
 
+この記事を含む私のQiita記事はGitHub上で公開しています。
+
+https://github.com/YasuhiroABE/qiita.com
+
 # 下書きに登録されている記事の取り扱い
 
 ``npx qiita pull``を実行すると公開されている記事が全てダウンロードされます。
@@ -85,4 +89,37 @@ $ git add public/20250215_newarticle.md
 $ git commit -m 'Added new article public/20250215_newarticle.md.'
 $ git push
 ```
+
+GitHubのプロジェクトページに移動して、Actionsタブから経過を見守ります。
+
+30secで処理が完了したと記録されていますが、``git push``してからは2分ぐらいは経過していた印象です。
+
+# 気がついたこと
+
+## preview機能が秀逸
+
+ファイルの更新に応じてpreviewも更新されるためQiita公式サイトで編集するのと大きな違いを感じませんでした。
+
+画像ファイルのアップロードはpreviewページのリンクを辿って公式サイトで手動で管理しなければいけない点は少し面倒ですが、クリップボードからのコピーができてMarkdown形式でURLのコピーが出来るので、これは大きな障害ではないと思っています。
+
+![image.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/78296/304c6df0-e6b9-4167-9e3d-79a838823dd7.png)
+
+## 内容の重複するファイルが作成されてしまう
+
+``npx qiita new``で作成したファイルを``git push``すると、ActionsによってQiitaに記事が登録されます。
+
+この後に``npx qiita pull``を実行するとQiita側に登録された記事が``public/87881ee04e6052acafee.md``のようなファイル名で新しく作成されます。
+
+こちらで適当に作成したファイル名とQiita側で統一的にIDで管理されているファイルの2つが出来るのは当然ですが、どちらを編集するべきか、考えなければいけないという点では少し悩ましいです。
+
+GitHub側から全てのファイルをpushして、``npx qiita pull``を止めれば良いというのは、revalidationが出来なくなる点で問題があります。
+
+これは結構悩ましく、投稿したことでIDが確定するのでファイル名は予測不可能です。
+
+後から``git mv``でIDのファイル名に変更するのが最善手のように考えています。
+
+:::note
+手元ファイルの編集途中に``npx qiita pull``をすると上書きされてしまう点には少しだけ注意が必要ですが、これはこの問題とは無関係で他の管理形態であっても発生する課題です。
+:::
+
 
