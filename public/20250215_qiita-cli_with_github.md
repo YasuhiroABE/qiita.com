@@ -1,11 +1,11 @@
 ---
 title: Githubを使ってQiitaの記事を管理してみた
 tags:
-  - 'qiita-cli'
-  - 'github'
+  - GitHub
+  - qiita-cli
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-02-15T22:19:26+09:00'
+id: 87881ee04e6052acafee
 organization_url_name: null
 slide: false
 ignorePublish: false
