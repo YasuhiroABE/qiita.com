@@ -23,7 +23,7 @@ update:
 
 .PHONY: clean
 clean:
-	find . -type f -name '*~' -exec rm -f {} \;
+	find . -type f -name '*~' -exec rm -f {} \; -print
 
 .PHONY: pull
 pull:
