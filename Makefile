@@ -32,3 +32,13 @@ pull:
 .PHONY: status
 status:
 	git status
+
+.PHONY: git-push
+git-push:
+	git push
+	sleep 60
+	git pull
+
+.PHONY: preview
+preview:
+	npx qiita preview
