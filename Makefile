@@ -38,6 +38,7 @@ git-push:
 	git push
 	sleep 60
 	git pull
+	npx qiita pull
 
 .PHONY: preview
 preview:
