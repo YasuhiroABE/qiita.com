@@ -1,11 +1,11 @@
 ---
 title: SSHdが再起動できなくなった
 tags:
-  - 'ubuntu'
-  - 'ssh'
+  - Ubuntu
+  - SSH
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-04-28T13:01:09+09:00'
+id: ffcf4cef2d237aa57c68
 organization_url_name: null
 slide: false
 ignorePublish: false
