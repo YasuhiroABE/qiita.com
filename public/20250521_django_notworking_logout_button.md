@@ -1,10 +1,10 @@
 ---
-title: 'Django 5.2.1に以降したらlogoutボタンが動作しない事に気がついた'
+title: Django 5.2.1に以降したらlogoutボタンが動作しない事に気がついた
 tags:
-  - 'django'
+  - Django
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-05-21T16:38:16+09:00'
+id: 338a9efcbad4df8430cc
 organization_url_name: null
 slide: false
 ignorePublish: false
