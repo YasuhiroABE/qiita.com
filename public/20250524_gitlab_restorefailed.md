@@ -1,10 +1,10 @@
 ---
 title: Gitlabのリストアに失敗したので調べてみた
 tags:
-  - 'Gitlab'
+  - GitLab
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-05-24T19:46:54+09:00'
+id: 82110434907ce2050e71
 organization_url_name: null
 slide: false
 ignorePublish: false
