@@ -1,5 +1,5 @@
 ---
-title: Gitlabのリストアに失敗したので調べてみた
+title: Gitlab(v17)のリストアに失敗したので調べてみた
 tags:
   - GitLab
 private: false
@@ -11,9 +11,22 @@ ignorePublish: false
 ---
 # はじめに
 
-GitlabのPostgreSQLのバージョンを上げる際に一緒にGitlabのバージョンも変更してしまったところ、DBのテーブル情報とGitLabのバージョンで不整合が発生してしまいました。
+GitlabのPostgreSQLのバージョンをv14からv17にアップグレードする際に、DBのテーブル情報とGitLabのバージョンで不整合が発生してしまいました。
 
-バックアップから戻してやりなおそうと思ったのですが、次のようなメッセージが出てリストアタスクがうまく完了しません。
+:::note
+Gitlabのリストア時にはPostgreSQLのバージョンは同じである必要はありませんが、Gitlabのバージョンは完全に一致(identical)している必要があります。
+
+今回はそこを失念してGitlabのバージョンも変更してしまったため、リストアタスクが正常に実行できない状況になってしまったことがきっかけです。
+:::
+
+
+別のクラスターでGitlabのバージョンはそのままPostgreSQLをv14からv17に更新したところ、Repositoryが空になる現象に遭遇しました。
+
+発生条件は不明ですが、Gitlab v16の時には正常に完了したリストア手順だけでは対応できない状況に遭遇したので顛末をまとめておくことにしました。
+
+# エラーの状況
+
+PVCも再作成してバックアップから戻してやりなおそうと思ったのですが、次のようなメッセージが出てリストアタスクがうまく完了しません。
 
 ```
 Caused by:                                                                                                                      
@@ -43,13 +56,15 @@ Gitlabのリストアは成功するものだと思っていたので顛末を�
 
 # 参考資料
 
-通常のリストアタスクは次の記事に掲載しています。
+Gitlabのリストアタスクは次の記事に掲載しています。
 
 https://qiita.com/YasuhiroABE/items/58e1e4b0f600d29e6166
 
 # 現在の環境
 
 Gitlabのリストアでは、Gitlabのバージョンはバックアップを取得した時と同一でなければいけません。
+
+PostgreSQLのバージョンは新しくしています。障害の調査で同じPostgreSQLのバージョンでも確認していますが、現象に違いはありませんでした。
 
 * Kubernetes v1.31.4
 * Gitlab v17.11.2 - [sameersbn/docker-gitlab版](https://github.com/sameersbn/docker-gitlab)
@@ -63,24 +78,24 @@ Gitlabのリストアでは、Gitlabのバージョンはバックアップを�
 
 # 検証作業
 
-エラーを再現しながら原因を絞りこんでいきます。
+エラーを再現しながら原因を絞りこんでいきました。
 
 ## バックアップイメージの健全性の検証
 
-まず他のバックアップイメージを利用して同様のエラーになることを確認しています。
+まず他の日付のバックアップイメージを利用して同様のエラーになることを確認しています。
 
 想定される原因は次のようになります。
 
 1. バックアップイメージが全滅
 2. リストア環境かリストア工程が、何等かの理由で不整合を起している
 
+バックアップイメージが全滅している可能性は過去の経験からも低いと思われたので、なんとかリストアする方向で進めます。
+
 ## バックアップを取得した環境と同様にする
 
-PostgreSQLのPVCを作り直してから、元のv14にバージョンを落して再起動してみます。
+PostgreSQLのPVCを作り直してから、元のv14にバージョンを落して再起動します。
 
-この環境でリストアを実行して確認していきます。
-
-しかし最終的にメッセージは少し違いますが、同様のエラーで停止しました。
+この状態でリストアを試みたものの、最終的にメッセージは少し違いますが、同様のエラーで停止しました。
 
 ```
 /home/git/gitlab/vendor/bundle/ruby/3.2.0/gems/rake-13.0.6/exe/rake:27:in `<top (required)>'
@@ -91,36 +106,62 @@ Tasks: TOP => gitlab:backup:restore
 $
 ```
 
-GitlabへWebブラウザからアクセスしても正常に動作していません。
+この状態ではGitlabへWebブラウザからアクセスしても通常のページは表示されませんでした。
 
 ##  DB以外の部分をリストアしてみる
 
-まぁテーブルに何か不具合はあっても、ほぼほぼ復元できているようにみえます。
+``gitlab-rc.yml``ファイルの``image:``行と同じレベルに``args: ["sh","-c","--","while true; do sleep 30; done"]``の行を追加してから反映し、gitlabのpodを再起動し、サーバープロセスが起動されないようにします。
 
-しかしGitlabはWebブラウザからアクセスするとファイルが復元されていない状態でした。
+次にGitlabのバックアップイメージを``kubectl cp``コマンドで退避してから、GitlabのPVCを作り直してまっさらな状態にします。
+
+作業を簡単にするために次のようなShell関数を利用しています。
+
+```bash:gitlabのバックアップイメージを操作するためのbash関数
+function gitlab_backup_list {
+  name=$(get_gitlab_podname)
+  sudo kubectl -n gitlab exec -it "${name}" -- ls /home/git/data/backups/
+}
+
+function gitlab_backup_get {
+  name=$(get_gitlab_podname)
+  sudo kubectl -n gitlab cp "${name}":/home/git/data/backups/"$1" backups/"$1"
+}
+
+function gitlab_backup_put {
+  name=$(get_gitlab_podname)
+  sudo kubectl -n gitlab cp "$1" "${name}":/home/git/data/backups/"$1"
+}
+```
+
+何回か繰り返しリストアを試してみるとテーブルに何か不具合はあっても、ほぼほぼ復元できているようにみえます。
+
+GitlabはWebブラウザからアクセスするとファイルが復元されていない状態でした。
+
+よくメッセージをみると、DBのリストア→Repositoryのリストアという流れの最後でDB接続関連のエラーが出ているので、後半のRepositoryのリストアだけを実行してみます。
 
 ```
 root@gitlab-7xfmt:/home/git/gitlab# /sbin/entrypoint.sh app:rake gitlab:backup:restore SKIP=db BACKUP=1747843231_2025_05_22_17.11.2
 ```
 
-この状態ではWebブラウザからのアクセスはGitリポジトリのファイル以外は正常にアクセスでき動作しているようです。
+この後、``gitlab-rc.yml``から``args: ["sh","-c","--","while true; do sleep 30; done"]``の行をコメントにして反映させて、``kubectl -n gitlab delete pod ...``でGitlabのPodを再起動しました。
+
+こうするとWebブラウザからのアクセスはGitリポジトリのファイル以外は正常にアクセスでき動作して復旧することができました。
 
 # まとめ
 
 ここまでの作業で無事に復旧し、gitリポジトリからの``git pul``でも問題なくファイルがダウンロードできました。
 
-1. ``args: [...]``をgitlab-rc.ymlファイルで有効にする
+1. ``args: [...]``をgitlab-rc.ymlファイルで有効にし、反映後再起動する
 2. リストアコマンドの実行 
 3. 再度、同じリストアコマンドに``SKIP=db``を追加して実行
 4. ``# args: [...]``とコメントに変更した``gitlab-rc.yml``ファイルをapplyしてからPodの再起動
+5. 稼動確認
 
-Gitlabはバックアップさえきちんと保存しておけば大丈夫だとは思っていましたが、今回は少し戸惑いました。
+Gitlabはバックアップさえきちんと保存しておけば大丈夫だとは思っていましたが、今回は少し手間取りました。
 
 # PostgreSQL 14から17への自動マイグレーション
 
-image:を変更してPodをリスタートしてからログをよく確認するとマイグレーションタスクが自動的に実行されています。
-
-これが利用できれば問題ないのですが、使えるものなのか確認してみました。
+``postgresql-rc.yml``ファイルでimage:行を変更してv14からv17に変更し、Podをリスタートしてからログをよく確認するとマイグレーションタスクが自動的に実行されています。
 
 ```text:
 Initializing datadir...
@@ -142,9 +183,12 @@ Checking for prepared transactions                            ok
 Checking for contrib/isn with bigint-passing mismatch         ok
 Checking data type usage                                      ok
 Creating dump of global objects                               ok
+...
 ```
 
 Gitlabのpodを停止した状態で、PostgreSQLをv14からv17へこの方法でマイグレーションしてみましたが、Gitlabを起動しても正常には起動完了しませんでした。
+
+ログには次のような内容が繰り返し出力されている状況です。
 
 ```
 2025-05-24 17:21:08,457 INFO spawned: 'puma' with pid 16403
