@@ -1,5 +1,5 @@
 ---
-title: Open WebUIのLDAP認証の仕組み
+title: Open WebUIのLDAP認証の改造
 tags:
   - LDAP
   - OpenWebUI
