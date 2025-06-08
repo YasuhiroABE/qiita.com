@@ -4,7 +4,7 @@ tags:
   - LDAP
   - OpenWebUI
 private: false
-updated_at: '2025-06-07T12:23:00+09:00'
+updated_at: '2025-06-08T12:16:46+09:00'
 id: 29ebf47bf4ce9b7ee1be
 organization_url_name: null
 slide: false
