@@ -38,7 +38,7 @@ https://qiita.com/YasuhiroABE/items/259f9a471e1b594ffdce
 $ kubectl exec -it $(kubectl get pod -l tier=mysql -o jsonpath={.items[0].metadata.name}) -- bash
 
 ## MySQLのコンテナの中から実行
-# mysql -u root -p${MYSQL_ROOT_PASSWORD} ${MYSQL_DATABASE}
+$ mysql -u root -p${MYSQL_ROOT_PASSWORD} ${MYSQL_DATABASE}
 ```
 
 mysqlコマンドの``-p``オプションは空白を置いてしまうとうまく動作しないのですが、よく忘れてしまいます。
