@@ -2,7 +2,7 @@
 title: DjangoでDBに登録されたデータのIDをリセットしてみた
 tags:
   - Django
-  - fobi
+  - django-fobi
 private: false
 updated_at: '2025-06-17T17:07:44+09:00'
 id: f577c031b591318d64d4
