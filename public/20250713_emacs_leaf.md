@@ -1,11 +1,11 @@
 ---
 title: Emacsのinit.elをleaf.elで書き換えた
 tags:
-  - 'Emacs'
-  - 'leaf.el'
+  - Emacs
+  - leaf.el
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-07-13T23:23:32+09:00'
+id: 23feafa7385df3ea46c3
 organization_url_name: null
 slide: false
 ignorePublish: false
