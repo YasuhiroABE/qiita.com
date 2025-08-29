@@ -129,7 +129,7 @@ LimitRangeを使うことで1つ目のPodがQuotaの制限値を越えないよ�
 apiVersion: crds.yadiary.net/v1
 kind: Members
 spec:
-  members: 
+  members:
     - member: yasu
       maxCPUm: 500
       maxMemoryMiB: 500
@@ -763,5 +763,89 @@ if ok, err := r.checkService(ctx, kubecampview, member); ok {
 これを適用してみると、案外ちゃんと動いてくれていてメモリやCPU負荷がどんどん上がっていくということはありません。
 
 もう少し状況を観察して、最終的にはcheckService()ではなく、reconcileUserService()を作成してネストしたif文は削除する予定です。
+
+以上
+
+# 【後日談】Dockerイメージの更新作業
+
+Operatorを格納しているHarborのScannerがいくつものCVEを報告してくるのが気になるようになりました。
+
+Dockerfileでgolangのバージョンを1.21から1.24に変更するのは出来そうですが、他にもgoパッケージの更新が発生します。
+
+作成したOperatorのコードをどうやってメンテナンスするのかメモをまとめておきます。
+
+## Dockerfileの更新
+
+Dockerfile上にgolangのバージョンが指定されているので、任意の最新版に変更します。
+
+ここでは ``1.24`` にしています。
+
+```diff:
+diff --git a/Dockerfile b/Dockerfile
+index e3b15d0..845fafc 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,5 +1,5 @@
+ # Build the manager binary
+-FROM docker.io/golang:1.21 AS builder
++FROM docker.io/golang:1.24 AS builder
+ ARG TARGETOS
+ ARG TARGETARCH
+
+```
+
+## controller-runtimeの更新
+
+Operatorのコードの元になるバージョンを最新に変更します。
+
+```bash:go.mod等があるディレクトリで最新のcontroller-runtimeを導入する
+$ go get sigs.k8s.io/controller-runtime@v0.22.0
+```
+
+## その他のツール類の更新
+
+Makefile上にツールのバージョンがまとめられているので、最新に変更します。
+
+```diff:
+diff --git a/Makefile b/Makefile
+index 4b03413..4cb867c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -163,10 +163,10 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
+ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+
+ ## Tool Versions
+-KUSTOMIZE_VERSION ?= v5.3.0
+-CONTROLLER_TOOLS_VERSION ?= v0.14.0
++KUSTOMIZE_VERSION ?= v5.7.1
++CONTROLLER_TOOLS_VERSION ?= v0.19.0
+ ENVTEST_VERSION ?= latest
+-GOLANGCI_LINT_VERSION ?= v1.54.2
++GOLANGCI_LINT_VERSION ?= v2.4.0
+
+ .PHONY: kustomize
+ kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+```
+
+この状態で ``make build`` などを実行すると、go.modやgo.sumなども適切に更新されました。
+
+## Webhookの変更
+
+``webhook.Defaulter``から``webhook.CustomDefaulter``を利用するように変更する必要がありました。
+
+公式ガイドの通りに進めれば問題ありませんが、ポイントは次のとおりです。
+
+https://book.kubebuilder.io/cronjob-tutorial/webhook-implementation
+
+1. ガイドにあるようにパッケージの参照、関数名などの変更を行う
+2. ``var _ webhook.Defaulter = ..``の部分を``CustomDefaulter``に変更
+3. webhook.CustomDefaulterに代入しているオブジェクトを、SetupWebhookWithManager(..)の中で明示的にWithDefaulter()、WithValidator()の中で明示的に登録する
+4. webhook.CustomDefaulterに代入しているオブジェクトを取り出す際には、``obj.(..)``のようにobjから取り出す
+
+公式ガイドではCronJobのコントロールについて書かれていて、CronJobCustomDefaulterを定義していますが、必ずしもstructを作る必要はありませんでした。
+
+ただ明示的にSetupWebhookWithManager()の中でオブジェクトを登録していなかったので、正常に動作しないランタイムをビルドしてしまいました。
+
+それほど複雑な変更が必要なわけではないですが、久し振りにメンテナンスするにはハードルの少し高い変更だったと思います。
 
 以上
