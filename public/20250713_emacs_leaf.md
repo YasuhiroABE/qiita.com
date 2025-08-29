@@ -4,7 +4,7 @@ tags:
   - Emacs
   - leaf.el
 private: false
-updated_at: '2025-07-13T23:23:32+09:00'
+updated_at: '2025-08-29T22:54:34+09:00'
 id: 23feafa7385df3ea46c3
 organization_url_name: null
 slide: false
