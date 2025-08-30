@@ -764,17 +764,15 @@ if ok, err := r.checkService(ctx, kubecampview, member); ok {
 
 もう少し状況を観察して、最終的にはcheckService()ではなく、reconcileUserService()を作成してネストしたif文は削除する予定です。
 
-以上
-
-# 【後日談】Dockerイメージの更新作業
+## Controller-Runtime等のCustom Operatorコードのメンテナンス
 
 Operatorを格納しているHarborのScannerがいくつものCVEを報告してくるのが気になるようになりました。
 
-Dockerfileでgolangのバージョンを1.21から1.24に変更するのは出来そうですが、他にもgoパッケージの更新が発生します。
+Dockerfileでgolangのバージョンを1.21から1.24に変更するのは出来そうですが、他にもgoパッケージの更新が必要です。
 
-作成したOperatorのコードをどうやってメンテナンスするのかメモをまとめておきます。
+何も考えずにgo.modを変更するとはまりそうだったので、作成したOperatorのコードをどうやってメンテナンスするのかメモをまとめておきます。
 
-## Dockerfileの更新
+### Dockerfileの更新
 
 Dockerfile上にgolangのバージョンが指定されているので、任意の最新版に変更します。
 
@@ -794,7 +792,7 @@ index e3b15d0..845fafc 100644
 
 ```
 
-## controller-runtimeの更新
+### controller-runtimeの更新
 
 Operatorのコードの元になるバージョンを最新に変更します。
 
@@ -831,21 +829,22 @@ index 4b03413..4cb867c 100644
 
 ## Webhookの変更
 
-``webhook.Defaulter``から``webhook.CustomDefaulter``を利用するように変更する必要がありました。
+controller-tools/runtimeのバージョンが上がったため、``webhook.Defaulter``から``webhook.CustomDefaulter``を利用するように変更する必要がありました。
 
 公式ガイドの通りに進めれば問題ありませんが、ポイントは次のとおりです。
 
 https://book.kubebuilder.io/cronjob-tutorial/webhook-implementation
 
 1. ガイドにあるようにパッケージの参照、関数名などの変更を行う
-2. ``var _ webhook.Defaulter = ..``の部分を``CustomDefaulter``に変更
-3. webhook.CustomDefaulterに代入しているオブジェクトを、SetupWebhookWithManager(..)の中で明示的にWithDefaulter()、WithValidator()の中で明示的に登録する
-4. webhook.CustomDefaulterに代入しているオブジェクトを取り出す際には、``obj.(..)``のようにobjから取り出す
+2. ``var _ webhook.Defaulter = ..``の部分を``var _ webhook.CustomDefaulter``に変更
+3. webhook.Defaulterに代入していたオブジェクトについて、インタフェースの変更などはないので、そのままでOK
+4. ただし、webhook.CustomDefaulterに代入しているオブジェクトは、SetupWebhookWithManager(..)の中で明示的にWithDefaulter()、WithValidator()を利用して明示的に登録する
+5. webhook.CustomDefaulterに代入しているオブジェクトを取り出す際には、``obj.(..)``のようにobjから取り出す
 
 公式ガイドではCronJobのコントロールについて書かれていて、CronJobCustomDefaulterを定義していますが、必ずしもstructを作る必要はありませんでした。
 
-ただ明示的にSetupWebhookWithManager()の中でオブジェクトを登録していなかったので、正常に動作しないランタイムをビルドしてしまいました。
+ただ明示的にSetupWebhookWithManager()の中でオブジェクトを登録していなかったので、コンパイルエラーにはならないものの、正常に動作しないランタイムをビルドしてしまいました。
 
-それほど複雑な変更が必要なわけではないですが、久し振りにメンテナンスするにはハードルの少し高い変更だったと思います。
+それほど複雑な変更が必要なわけではないですが、久し振りにメンテナンスするには少しハードルの高い変更でした。
 
 以上
