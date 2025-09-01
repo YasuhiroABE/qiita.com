@@ -1,12 +1,12 @@
 ---
 title: 時々Ubuntuサーバーのsshが自動更新に失敗している
 tags:
-  - 'Kubernetes'
-  - 'Ubuntu'
-  - 'SSH'
+  - Ubuntu
+  - SSH
+  - kubernetes
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-09-01T09:41:37+09:00'
+id: 711785ad5b1e0d71ff1a
 organization_url_name: null
 slide: false
 ignorePublish: false
