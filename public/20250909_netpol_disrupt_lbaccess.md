@@ -5,11 +5,11 @@ tags:
   - loadbalancer
   - NetworkPolicy
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-09-09T16:12:43+09:00'
+id: 2b0498d9095ce185c07f
 organization_url_name: null
 slide: false
-ignorePublish: falsef
+ignorePublish: false
 ---
 # はじめに
 
