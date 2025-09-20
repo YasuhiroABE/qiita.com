@@ -1,12 +1,12 @@
 ---
 title: コンピュータ・サイエンスを学ぶ意義
 tags:
-  - 'コンピュータサイエンス'
-  - 'コンピュータ理工'
-  - 'ポエム'
+  - ポエム
+  - コンピューターサイエンス
+  - コンピュータ理工
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-09-20T23:18:45+09:00'
+id: 51336d68c5a51b33fd5a
 organization_url_name: null
 slide: false
 ignorePublish: false
