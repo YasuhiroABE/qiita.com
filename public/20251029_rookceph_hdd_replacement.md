@@ -5,8 +5,8 @@ tags:
   - kubernetes
   - Rook
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-10-31T11:25:02+09:00'
+id: 1b2d546f0c0d1bcccd44
 organization_url_name: null
 slide: false
 ignorePublish: false
