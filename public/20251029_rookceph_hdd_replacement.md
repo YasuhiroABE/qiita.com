@@ -53,6 +53,28 @@ Cephの状態はあまり関係なさそうなので、Remap処理が終って�
 
 作業の前にSMARTのSelf-Testを実行して問題は報告されていなかったのですが、他のノードでも似たような状態のHDDを使用していたので、同時にクラッシュすることを怖れて早めに交換することにしました。
 
+## 他のノードで発生していた別の状況
+
+他のノードのHDDも交換の準備を進めていますが、対象は2TBのExos 7E2で、RMAサイトで確認すると先々月の2025年9月18日に保証期限が切れています。
+
+SMARTの出力では経年劣化の兆候以外は問題なく、hdparmのベンチマーク結果も150MB/sec以上の数値で良好です。
+
+ただGrafanaでOSDの状況をみると、このHDDをBlueStoreとして利用しているOSDだけでlatencyが悪化しています。
+
+![交換予定のSeagate Exos 7E2ドライブ](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/78296/a7a1209f-04fb-4305-a6f1-3acf9ef26fcc.png)
+
+ちなみに交換予定のCephクラスターにある他の正常なHDDドライブ(HGST 7K2 2TB)の状態は次のとおりです。
+
+![交換予定のCephにある正常な他のHDDドライブ](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/78296/7a168385-407c-46c8-a772-b1e87e833231.png)
+
+他k8sクラスターで利用しているExos 7E2 (1TBモデル)をみるとlatencyのバラツキは大きいので、Exos 7E2の特性かもしれません。
+
+この1TBのHDDも今年の5月で保証は切れているので、様子をみて交換を検討しますが、まだしばらく利用する予定です。
+
+![問題のない他のk8sクラスターのExos 7E2ドライブ](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/78296/b2d14c2b-e079-45b7-aa50-925543f84504.png)
+
+使っている範囲ではWD(HGST), Seagete, TOSHIBAのいずれのドライブもニアライン級であれば問題はないと思っています。
+
 # 交換手順
 
 まず試したのは以前の記事を参考にRook/Cephに含まれているosd-purge.yamlを使用する方法ですが、今回はうまく進めることができませんでした。
@@ -144,6 +166,13 @@ index 4c62da285..09f074b49 100644
 $ kubectl -n rook-ceph apply -f osd-purge.yaml
 ```
 
+初回は次のようなログが記録され、期待した動作はしませんでした。
+
+```text:osd-purge.yaml初回反映時のPODログ
+2025-11-05 00:18:02.615364 I | cephosd: validating status of osd.3
+2025-11-05 00:18:02.615389 I | cephosd: osd.3 is healthy. It cannot be removed unless it is 'down'
+```
+
 今回、これはうまく動作しませんでしたが、次の工程を終えてから、再度実行します。
 
 ## 手動でのpod/rook-ceph-osd-3-*の停止 (4)
@@ -154,14 +183,31 @@ Operatorと同様に``scale``を利用するか、手動でdeployオブジェク
 $ kubectl -n rook-ceph scale deploy rook-ceph-osd-3 --replicas=0
 ```
 
+これを実行してから``pod/rook-ceph-osd-3-*``が消えていることを確認して、再度osd-purge.yamlを反映する手順(5)を行います。
 
-## 残りの作業 (5〜8) と、よくある失敗
+## 再度osd-purge.yaml(5)を実行する
+
+繰り返し実施する時には、名前が同じJOBが既に登録されているので削除してから反映させます。
+
+```bash:
+$ kubectl -n rook-ceph delete -f osd-purge.yaml
+$ kubectl -n rook-ceph apply -f osd-purge.yaml
+```
+
+今度は次のようなログがPODに記録され、無事にOSDが削除されました。
+
+```text:
+2025-11-05 00:24:50.407275 I | cephosd: no ceph crash to silence
+2025-11-05 00:24:50.407308 I | cephosd: completed removal of OSD 3
+```
+
+## 残りの作業 (6〜8) と、よくある失敗
 
 あとは繰り返しや他で説明している内容なので省略します。
 
 問題になりそうなところは交換するHDDが新品でない場合に、適切に初期化されていない場合でしょう。
 
-HDDの初期化についてはrook.ioのドキュメントに記述があるので、交換してからuncordonする前に``sgdisk --zap-all $DISK``などを適切に実行しましょう。
+HDDの初期化についてはrook.ioのドキュメントに記述があるので、交換してからuncordonする前に``sgdisk --zap-all /dev/sdN``などを適切に実行しましょう。
 
 https://rook.io/docs/rook/latest-release/Getting-Started/ceph-teardown/#delete-the-data-on-hosts
 
