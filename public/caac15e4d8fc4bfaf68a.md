@@ -16,10 +16,13 @@ ignorePublish: false
 
 この方法はまだ未検証の部分が多いですが、とりあえず管理者としては無事にログインできるようになったので、ここまでの作業を記事にまとめることにします。
 
-> 最終的に2024年時点で稼動させたDiscourseではPluginを利用してOIDC Providerを利用しています。[Qiita.com - DiscourseをHelmで導入してみた + API経由でのサーバー設定](https://qiita.com/YasuhiroABE/items/811b04b3d9cfff58dcc3)
+:::note
+最終的に2024年時点で稼動させたDiscourseではPluginを利用してOIDC Providerを利用しています。[Qiita.com - DiscourseをHelmで導入してみた + API経由でのサーバー設定](https://qiita.com/YasuhiroABE/items/811b04b3d9cfff58dcc3)
+:::
 
 ## この記事以外の成果物
-* https://github.com/YasuhiroABE/discourse-sso-oidc-bridge
+
+https://github.com/YasuhiroABE/discourse-sso-oidc-bridge
 
 # 解決したい問題・問題になりそうな環境要因
 
@@ -196,7 +199,7 @@ redirectURIs:の中で、"http://"とnon-TLSを指定しているのはわざと
 ## Discourse管理者画面での変更点
 
 あらかじめ管理者として登録しているユーザーでログインしておきます。
-http://discourse.example.org/admin/site_settings/category/login に進み、"sso url"に *https://proxy.example.org/sso/login*を指定します。
+http\://discourse.example.org/admin/site_settings/category/login に進み、"sso url"に https\://proxy.example.org/sso/login を指定します。
 
 たぶんこの設定が一番分かりにくいのかもしれません。Bridgeのリポジトリを作ったSundellさんが参考にした https://github.com/fmarco76/DiscourseSSO のREADME.rst の中で説明されています。
 
@@ -204,7 +207,7 @@ http://discourse.example.org/admin/site_settings/category/login に進み、"sso
 
 # discourse-sso-oidc-bridgeへの変更点
 
-https://github.com/YasuhiroABE/discourse-sso-oidc-bridge は次のような問題がありました。
+https://github.com/YasuhiroABE/discourse-sso-oidc-bridge はオリジナルを利用する時にあった次のような問題を解決しています。
 
 * OpenID ConnectのIssuer(この場合ではdexidp/dex)が、cookieに"userinfo"をキーにして情報を返してくる点
 * この"userinfo"に含まれる情報として、"email"、"external_id"の2つは最低限必要としているが、Issuerは"sub"にユニークなIDを格納してくる点
@@ -217,7 +220,14 @@ https://github.com/YasuhiroABE/discourse-sso-oidc-bridge は次のような問�
 
 ## 差分
 
-https://github.com/consideRatio/discourse-sso-oidc-bridge/compare/master...YasuhiroABE:master
+:::note
+現在はPluginを利用しているので十分に確認していませんが、この動作に関連するDexの挙動はこの時点から変更されているはずで、私が変更したコードは最新のDexとの組み合せでは動作しない可能性があります。
+
+オリジナルのコードで問題なく動作することを期待していますが、もしうまく動作しなければ、ここに掲載した情報を参考にしてsessionが返す内容を確認してください。
+:::
+
+https://github.com/YasuhiroABE/discourse-sso-oidc-bridge/commit/a034ed6276112b32ee9d4e6a4217875506f90927
+
 
 ```diff
 diff --git a/discourse_sso_oidc_bridge/app.py b/discourse_sso_oidc_bridge/app.py
