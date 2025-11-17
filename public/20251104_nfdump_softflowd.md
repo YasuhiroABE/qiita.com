@@ -1,12 +1,12 @@
 ---
 title: Ansibleでnfdumpとsoftflowdを構成する
 tags:
-  - ansible
+  - Ansible
   - netflow
   - softflowd
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-11-17T11:30:53+09:00'
+id: e6d5586af1f7af3bf680
 organization_url_name: null
 slide: false
 ignorePublish: false
