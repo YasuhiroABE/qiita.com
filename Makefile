@@ -42,4 +42,4 @@ git-push:
 
 .PHONY: preview
 preview:
-	npx qiita preview &
+	npx qiita preview
