@@ -172,3 +172,45 @@ $ bundle exec ruby ./verify-kubeconfig.rb ~/.kube/config.test
 jwt.ioに最後の公開鍵の情報をコピー&ペーストすれば、検証結果が画面に表示されます。
 
 
+# JWK(JSONフォーマット)を利用した検証
+
+JWT.ioではJWK形式の鍵情報も受け付けてくれます。
+
+ただ``https://example.org/dex/keys``のようなOIDC IdPの公開鍵のエンドポイントにアクセスすると、次のようなJSON形式のデータが表示されています。
+
+```json:https://example.org/dex/.well-known/openid-configurationのjwks_uri情報
+{
+  "keys": [
+    {
+      "use": "sig",
+      "kty": "RSA",
+      "kid": "aa00...",
+      "alg": "RS256",
+      "n": "30...",
+      "e": "AQAB"
+    },
+    {
+      ...
+    }
+  ]
+}
+```
+
+この情報全体をコピ&ペーストしてもid-tokenの検証はできません。
+
+ここからid-tokenの``kid``をみて適当な情報だけをコピーすると、検証に成功するはずです。
+
+```json:jwt.ioのJWKタイプの公開鍵情報の入力例
+    {
+      "use": "sig",
+      "kty": "RSA",
+      "kid": "aa00...",
+      "alg": "RS256",
+      "n": "30...",
+      "e": "AQAB"
+    }
+```
+
+注意するところは、jwt.ioのサイトで公開鍵タイプを"PEM"から"JWK"に変更すること、コピーする時に``},``のように最後にカンマを入力しないようにするところぐらいかなと思います。
+
+
