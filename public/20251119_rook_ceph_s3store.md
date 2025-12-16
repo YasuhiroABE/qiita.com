@@ -2,12 +2,12 @@
 title: 久し振りにRook/CephにObjectStoreを構成してみた
 tags:
   - Ceph
-  - Rook
   - kubernetes
   - ObjectStorage
+  - Rook
 private: false
-updated_at: ''
-id: null
+updated_at: '2025-12-16T12:13:21+09:00'
+id: 55897bd0822984c35e05
 organization_url_name: null
 slide: false
 ignorePublish: false
