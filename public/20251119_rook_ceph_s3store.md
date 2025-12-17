@@ -18,7 +18,9 @@ ignorePublish: false
 
 v0.xの時代にもObjectStorage機能は提供されていたように思いますが、RookのObject Storage機能はバージョンが変更される毎に修正されたり、廃止されたり、いろいろあった部分です。
 
-RookはCephに注力するようになってきてRGWは今後もサポートされそうです。
+短い間でしたがCassandraを構成することも出来ましたね。
+
+現在のRookはCephのみに注力するようになってきて、RGWは今後もサポートされそうです。
 
 Minioの雲行きが少し怪しいので移行先として検証しておこうと思い、既存のRook/CephにObject Storage機能を追加してみようと思います。
 
@@ -43,7 +45,7 @@ https://rook.io/docs/rook/v1.18/Storage-Configuration/Object-Storage-RGW/object-
 
 # 変更作業
 
-まずCephBlockPoolオブジェクを作成します。
+まず **CephBlockPool** オブジェクを作成します。
 
 ```bash:
 $ cd rook/deploy/examples/
@@ -174,7 +176,7 @@ $ export AWS_SECRET_ACCESS_KEY=$(kubectl -n $ns get secret ceph-bucket -o jsonpa
 $ env |egrep 'AWS|BUCKET' | sort
 
 AWS_ACCESS_KEY_ID=REWDFFPM6CK0JP7R5MWF
-AWS_HOST=rook-ceph-rgw-sccp.rook-ceph.svc
+AWS_HOST=rook-ceph-rgw-store-a.rook-ceph.svc
 AWS_SECRET_ACCESS_KEY=VzGQfLL5oyqEZ9te7OCUYIAJ6gIi43ezSZeMNx2C
 BUCKET_NAME=ceph-bkt-b29d078b-3502-4715-87a8-329fa4df059b
 BUCKET_PORT=80
@@ -192,6 +194,69 @@ BUCKET_PORT=80
 $ kubectl apply -f toolbox-operator-image.yaml
 ```
 
-公式ガイドに書かれているように s5cmd を
+Deployした ``rook-ceph-tools-operator-image`` に入ってから、公式ガイドに書かれているように s5cmd を実行します。
+
+```bash:s5cmdによる動作確認
+$ sudo kubectl -n rook-ceph exec -it "$(sudo kubectl -n rook-ceph get pod -l app=rook-ceph-tools-operator-image -o jsonpath='{.items[*].metadata.name}')" -- bash
+
+## あらかじめ ~/.aws/credentials ファイルを作成する
+# mkdir -p ~/.aws
+# cat > ~/.aws/credentials << EOF
+[default]
+aws_access_key_id = REWDFFPM6CK0JP7R5MWF
+aws_secret_access_key = VzGQfLL5oyqEZ9te7OCUYIAJ6gIi43ezSZeMNx2C
+EOF
+
+## 環境変数を設定
+# export AWS_HOST=rook-ceph-rgw-store-a.rook-ceph.svc
+# export BUCKET_NAME=ceph-bkt-b29d078b-3502-4715-87a8-329fa4df059b
+# export BUCKET_PORT=80  ## 変数名はPORTからBUCKET_PORTに変更
+
+## 公式ドキュメントに従ってs5cmdを実行
+# echo "Hello, Rook" > /tmp/hogebar.txt
+# s5cmd --endpoint-url http://$AWS_HOST:$BUCKET_PORT cp /tmp/rookObj s3://$BUCKET_NAME
+
+# s5cmd --endpoint-url http://$AWS_HOST:$BUCKET_PORT cp s3://$BUCKET_NAME/rookObj /tmp/rookObj-download
+# cat /tmp/rookObj-download
+Hello, Rook
+```
+
+アプリケーションから設定を行う場合には環境変数にSecretオブジェクトの値を代入させるよう設定します。
+
+ここまでで基本的な使い方については問題なさそうな事を確認できました。
+
+## ユーザー(namespace)毎にQuotaを設定する
+
+利用者に開放しているシステムで利用したいので、無制限にオブジェクトを登録されると困るので最大サイズを指定します。
+
+CRDを眺めているといくつか方法はありそうで、``maxSize:``パラメータが定義されているのは、``CephObjectStore`` の ``.spec.dataPool.quotas`` に maxSize などのパラメータがあります。また ``CephObjectStoreUser`` の ``.spec.quotas`` の中に maxSize や maxBucket といった設定があります。
+
+``CephObjectStore``ではプール全体のサイズが指定できるだけなので、この設定はストレージ領域の過剰な消費を防止するためにシステム全体では必要ですが、ユーザー毎という今回の目的には向きません。
+
+また``CephObjectStoreUser`` の設定はk8sのRBACとは関係がないので、ユーザーが複数のBucketを作成すれば複数のユーザーがCeph内部に作成されてしまい、目的を達成するには管理が複雑になってしまいます。
+
+公式ガイドをみると、CephのCRD(crds.yaml)で管理されている ``ObjectBucketClaim`` の ``.spec.additionalConfig`` の中で bucketMaxSize などが指定できるようです。
+
+https://rook.io/docs/rook/v1.18/Storage-Configuration/Object-Storage-RGW/ceph-object-bucket-claim
+
+今回はOperatorを利用してユーザーにnamespaceを払い出しているので、ユーザーからはObjectBucketClaimは参照しかできないようにして、自作のOperatorからユーザーのnamespace上にObjectBucketClaimを作成するような挙動にしようと思います。
+
+ユーザーは任意のBucketを利用できなくなりますが、Quotaを強制するには仕方がないかなと思います。
+
+他の方法はユーザーがBucketを作成した時点で、対応する``CephObjectStoreUser``を作成する方法があります。
+
+ただ``CephObjectStoreUser``による方法では、Bucket毎にオブジェクトを作成することになるので、それぞれのサイズは制御できても、Bucket数そのものを制御することができないため、適当ではなさそうです。
+
+# まとめ - サービスでの利用方法
+
+実際に利用している環境でStorageClassを追加しました。``sc/rook-ceph-bucket`` を追加して、``-delete``はname:から消しています。
+
+RBACを使ってOIDC経由での認証されたユーザーには``ObjectBUcketClaim``の参照権限だけを与えています。
+
+実際のBucketはOperatorで数を制限して、``obc/<namespace name>-1`` などのように設定された数だけ自動的に作成するようにしています。
+
+ユーザーは任意のタイミングで削除することができなくなりましたが、s5cmdなどを使って手動でファイルを削除して利用してもらうことにします。
+
+余裕があればObject Storeを管理するためのOperatorを作成しても良いのかもしれません。
 
 以上
