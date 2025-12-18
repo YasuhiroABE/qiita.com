@@ -237,7 +237,7 @@ CRDを眺めているといくつか方法はありそうで、``maxSize:``パ�
 
 公式ガイドをみると、CephのCRD(crds.yaml)で管理されている ``ObjectBucketClaim`` の ``.spec.additionalConfig`` の中で bucketMaxSize などが指定できるようです。
 
-https://rook.io/docs/rook/v1.18/Storage-Configuration/Object-Storage-RGW/ceph-object-bucket-claim
+https://rook.io/docs/rook/v1.18/Storage-Configuration/Object-Storage-RGW/ceph-object-bucket-claim/#example
 
 今回はOperatorを利用してユーザーにnamespaceを払い出しているので、ユーザーからはObjectBucketClaimは参照しかできないようにして、自作のOperatorからユーザーのnamespace上にObjectBucketClaimを作成するような挙動にしようと思います。
 
