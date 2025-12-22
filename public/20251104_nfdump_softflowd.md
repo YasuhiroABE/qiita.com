@@ -36,6 +36,7 @@ Python3の開発環境では全てvenvを利用しています。
 
 https://pitstop.manageengine.com/portal/en/community/topic/linux-router-expoerting-netflow-sflow-problems-setting-traffic-directions
 
+今回はfprobe/fprobe-ulogは利用していません。
 
 # 作業の概要
 
