@@ -25,7 +25,7 @@ Active Directory(AD)ではサーバーに接続する際にBINDが必要です�
 ```plantuml
 User -> LDAP : Anonymous BIND without BIND-DN and BIND-Password
 User -> LDAP : search query e.g., uid=yasu,ou=People,dc=example,dc=com
-LDAP -> User : Return the directory information for uid=yasu-abe,...
+LDAP -> User : Return the directory information for uid=yasu,...
 ```
 
 LDAP自体は自由度が高い設計になっているため、以前から特定の用途にしか使えない設計のアプリケーションは存在していました。
