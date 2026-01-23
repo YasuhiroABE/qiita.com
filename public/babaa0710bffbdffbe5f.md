@@ -7,7 +7,7 @@ tags:
   - Kubebuilder
   - CRD
 private: false
-updated_at: '2025-08-30T21:45:54+09:00'
+updated_at: '2026-01-23T15:23:00+09:00'
 id: babaa0710bffbdffbe5f
 organization_url_name: null
 slide: false
