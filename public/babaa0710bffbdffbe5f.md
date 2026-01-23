@@ -31,10 +31,13 @@ Custom Controllerを利用する良いusecaseだと思いつつ、わざわざ�
 
 Custom Controllerを作成するために全体をとおして参照した資料は次のとおりです。
 
-* 書籍: [実践入門 Kubernetesカスタムコントローラーへの道](https://nextpublishing.jp/book/11389.html)
-* Web: [つくって学ぶKubebuilder](https://zoetrope.github.io/kubebuilder-training/)
-* Web: https://pkg.go.dev/k8s.io/api
-* Web: https://kubernetes.io/docs/concepts/overview/components/
+https://nextpublishing.jp/book/11389.html
+
+https://zoetrope.github.io/kubebuilder-training/
+
+https://pkg.go.dev/k8s.io/api
+
+https://kubernetes.io/docs/concepts/overview/components/
 
 これらの参考資料とそこから派生する資料だけで十分だと思います。KubernetesのControl-Planeがapi-serverを中心にどのように動作しているのかは把握しておくことは必須です。
 
@@ -51,8 +54,9 @@ kubebuilder init --domain yadiary.net --repo gitlab.example.com/gitlab/yasu/oper
 
 個別の事象に対応するため、参考にした資料は以下にまとめます。
 
-* https://infosecwriteups.com/the-bind-escalate-and-impersonate-verbs-in-the-kubernetes-cluster-e9635b4fbfc6
-* https://stackoverflow.com/questions/54043691/roles-rbac-authorization-k8s-io-is-forbidden-even-added-in-apigroups
+https://infosecwriteups.com/the-bind-escalate-and-impersonate-verbs-in-the-kubernetes-cluster-e9635b4fbfc6
+
+https://stackoverflow.com/questions/54043691/roles-rbac-authorization-k8s-io-is-forbidden-even-added-in-apigroups
 
 
 ## 環境
@@ -60,10 +64,11 @@ kubebuilder init --domain yadiary.net --repo gitlab.example.com/gitlab/yasu/oper
 * エディター
   * Emacs with GitHub Copilot
   * JetBrains Goland with JetBrains AI Assistant
-* Utilities: KubeBuidler v3.14.0 
+* Utilities: KubeBuidler v3.14.0
 * K8s Cluster: Kubernetes v1.27.7
 * 開発環境: Ubuntu 22.04
 
+作成したCustom Controllerのコードをアップデートする方法については、さいごに追記しています。
 
 # おおまかな構成
 
@@ -122,7 +127,7 @@ LimitRangeを使うことで1つ目のPodがQuotaの制限値を越えないよ�
 
 ## CRDs
 
-ここでは次のようなCustom Resouceを想定しています。
+最終的に作成したCustom Controllerでは次のようなCustom Resouceを利用したいと考えています。
 
 ```yaml:01.members.yaml
 ---
@@ -140,7 +145,9 @@ spec:
       type: admin
 ```
 
-memberとtype以外のパラメータはオプションにして設定していない場合にはwebhookによってデフォルト値を与えています。
+memberとtype以外のパラメータはオプションにしています。
+
+パラメータが設定されていない場合にはwebhookによってデフォルト値を与えています。
 
 ## 考慮点
 
