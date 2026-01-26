@@ -1,5 +1,5 @@
 ---
-title: Kubebuidlerをアップグレードしてみた
+title: KubeBuilderをv4.10.1にアップグレードしてみた
 tags:
   - kubernetes
   - Kubebuilder
