@@ -1,11 +1,11 @@
 ---
 title: Kubebuidlerをアップグレードしてみた
 tags:
-  - Kubebuilder
   - kubernetes
+  - Kubebuilder
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-01-26T16:18:18+09:00'
+id: 6fd88bdf4e8539a2a21b
 organization_url_name: null
 slide: false
 ignorePublish: false
