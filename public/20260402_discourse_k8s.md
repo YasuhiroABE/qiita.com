@@ -1,11 +1,11 @@
 ---
 title: BitnamiのDiscourseをオフィシャルのイメージに移行した時のメモ
 tags:
-  - discourse
-  - bitnami
+  - BITNAMI
+  - Discourse
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-04-04T10:07:33+09:00'
+id: d14bb84b498918021693
 organization_url_name: null
 slide: false
 ignorePublish: false
