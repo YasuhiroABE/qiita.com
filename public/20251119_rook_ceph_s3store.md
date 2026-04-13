@@ -6,7 +6,7 @@ tags:
   - ObjectStorage
   - Rook
 private: false
-updated_at: '2026-04-11T11:02:50+09:00'
+updated_at: '2026-04-13T16:23:50+09:00'
 id: 55897bd0822984c35e05
 organization_url_name: null
 slide: false
