@@ -1,12 +1,12 @@
 ---
 title: Rook/CephのObjectStoreにNginxのコンテンツを配置する
 tags:
-  - 'Nginx'
-  - 'Rook'
-  - 'ObjectStore'
+  - nginx
+  - Rook
+  - ObjectStore
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-04-17T11:30:07+09:00'
+id: 4e3e7da4cdbedeea4488
 organization_url_name: null
 slide: false
 ignorePublish: false
