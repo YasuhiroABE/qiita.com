@@ -5,8 +5,8 @@ tags:
   - ingress
   - envoy
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-05-03T20:15:22+09:00'
+id: 75803ceda3feafcf4dbd
 organization_url_name: null
 slide: false
 ignorePublish: false
