@@ -43,11 +43,12 @@ https://github.com/kubernetes-sigs/ingress2gateway
 
 ## 全体の構成
 
-``ns/envoy-gateway-system``と``ns/gateway-system``の2つにnamespaceを分割する必要性はなさそうですが、Envoyが更新などの際にHelmによってupgradeされます。
+一見すると``ns/envoy-gateway-system``と``ns/gateway-system``の2つにnamespaceを分割する必要性はなさそうに思えますが、Envoy Gatewayは更新などの際にHelmによってupgradeされます。
 
-混乱を避けるためにシステム管理者が設定するGateway全体の設定と、Helmが管理する領域を分けています。
+混乱を避けるためにシステム管理者が設定するGateway全体の設定(ns/gateway-system)と、Helmが管理する領域(ns/envoy-gateway-system)を分けています。
 
 ```plantuml:
+package Kubernetes {
 [GatewayClass(gc)] as GC
 
 node "ns/envoy-gateway-system" {
@@ -57,6 +58,7 @@ node "ns/envoy-gateway-system" {
 node "ns/gateway-system" {
   [Gateways(gtw)] AS GTW
   "Admin User"
+  note right of GTW : Create manually
 }
 
 node "ns/username" {
@@ -67,9 +69,14 @@ node "ns/username" {
   [<username>-svc] as USVC
 }
 
-note top of GC : cluster scoped resource
-note top of "ns/envoy-gateway-system" : managed by Helm system
-note right of GTW : apply manually (It defines hostname and TLS cert/key files.)
+
+note left of GC
+  Cluster scoped resource
+  Create manually
+end note
+note top of "ns/envoy-gateway-system" : Managed by Helm system
+
+}
 
 "Admin User" -> GC : define
 "Admin User" -> GTW : define
@@ -83,10 +90,46 @@ GC -- GTW
 GTW -- Route
 ```
 
+## サービス環境
+
+外部からはNginxで構成しているフロントエンドのReverse Proxy Serverを中継してバックエンドのPrivate Networkに配置しているKubernetesに接続しています。
+
+```plantuml:
+actor "User / Web Browser" AS UW
+node "Frontend Reverse Proxy" {
+    component Nginx AS NX
+    interface "Port 443" AS I443
+}
+package Kubernetes {
+    node "ns/gateway-system" {
+        component "Gateways(gtw) Instance" AS GTW
+        interface "Port 443" AS E443
+    }
+}
+component "TLS Certificate and Key" AS TLS
+
+UW -> I443 : Public (Global) IP
+I443 - NX
+NX -> E443 : Private Network
+E443 - GTW
+
+TLS -- NX
+TLS -- GTW
+```
+
+``Gateways(gtw) Instance``ではNginxに設置しているTLS証明書を流用してHTTPS(Port:443)のみで接続を受け付けています。
+
+このためフロントエンドのNginxでは必要なヘッダーを付与しないと接続に失敗することになります。
+
+具体的にはHTTPヘッダーの``Host:``行にTLS証明書のSANと同じ名前を指定する必要があります。
+
+SANをある程度コントロールできる状況であればバックエンドのIPアドレスを含めても良いかもしれませんが、結局``Envoy Gateway``では``Host:``行をみてルーティングするので、TLSなネットワークレイヤーと、Gatewaysのアプリケーションレイヤーを分けるよう意識しないと混乱するかもしれません。
+
 # 環境
 
 * Kuberentes v1.34.3 (Kubespray v2.30.0)
 * ingress-nginx/controller v1.13.3
+* MetalLB v0.13.9 (managed by kubespray)
 
 ``networking.k8s.io``関連のCRDは次のようなものが導入されています。
 
@@ -100,11 +143,15 @@ adminnetworkpolicies                anp                       policy.networking.
 baselineadminnetworkpolicies        banp                      policy.networking.k8s.io/v1alpha1            false        BaselineAdminNetworkPolicy
 ```
 
+MetalLBのバージョンは後述するServiceオブジェクトへの静的なExternal-IPsの割り当てに影響します。
+
 # インストール作業
 
 ## Envoy Gatewayのインストール
 
 公式サイトの導入手順に従ってinstall.yamlファイルを導入しました。
+
+https://gateway.envoyproxy.io/docs/install/install-yaml/
 
 ```bash:
 $ sudo kubectl apply --server-side -f https://github.com/envoyproxy/gateway/releases/download/v1.7.2/install.yaml
@@ -130,21 +177,25 @@ spec:
 
 このYAMLファイルはLLM/Geminiに生成させています。
 
-## Gatewayオブジェクトの設定
+このままでもMetalLBから自動的にExternal-IPが割り当てられて利用できますが、IPを静的に固定するため後で編集しています。
+
+## Gateway用namespaceの作成
 
 外部にあるフロントエンドとなるReverse Proxy Server(nginx)からの処理を受け付けるためのGatewayオブジェクトを作成します。
 
-この作業はgateway用のnamespace ``gateway-system`` を作成して実行しています。
+この作業はgateway用のnamespace ``gateway-system`` を利用するため、まずこれを作成します。
 
 ```bash:
 $ sudo kubectl create ns gateway-system
 ```
 
-続いてこのnamespace上にGatewayオブジェクトを定義していきます。
+続いてこのnamespace上にGatewayオブジェクトを作成していきます。
 
 ## TLSファイルの配置
 
-まずTLSで接続を受け付けるために次のようなMakefileに次のようなタスクを登録しています。
+TLSの証明書の有効期間はどんどん短くなっているので最終的にはACME+Envoyを利用することになると思いますが、まだ環境が整っていないのでファイルを一定周期で更新する必要があります。
+
+コマンドを覚えていられないので、ファイルを``tls/``ディレクトリに配置した前提で、コマンドをMakefileに書いておきます。
 
 ```makefile:Makefileから抜粋
 NS = gateway-system
@@ -158,13 +209,9 @@ delete-sec:
         sudo kubectl -n $(NS) delete secret example.com-tls
 ```
 
-TLSの鍵ファイルはどんどん短命になっているので、定期的な作業を楽にするためにMakefileにコマンドを登録しています。
-
-最終的には環境が整い次第、ACMEに対応させる必要がありそうです。
-
 ## Gatewayオブジェクトの作成
 
-次のようなYAMLファイルを準備しました。
+作成したTLS証明書のSecretを参照するよう、次のようなYAMLファイルを準備しました。
 
 ```yaml:01.gateway.yaml
 ---
@@ -191,18 +238,24 @@ spec:
 
 無事にGateway(gtw)オブジェクトが作成できたか確認していきます。
 
-```bash:
+    ```bash:
 $ sudo kubectl -n gateway-system get gtw
 ```
 
-作成当初は``PROGRAMMED``がfalseになっていますが、しばらく待つとMetalLBからExternal-IPが払い出されて次のようになるはずです。
+作成当初は``ADDRESS``が空欄になっていますが、しばらく待つとMetalLBからExternal-IPが払い出されて次のようになるはずです。
 
 ```text:画面出力
 NAME             CLASS           ADDRESS           PROGRAMMED   AGE
 shared-gateway   envoy-gateway   192.168.100.165   True         31s
 ```
 
-デフォルトでLoadBalancerが使われるようで、特に設定なくMetalLBに割り当てているExternal-IP(192.168.100.0/24)のレンジから割り当てられています。
+``PROGRAMMED``はHTTPRouteの有無に関わらず**True**になっているはずです。
+
+リソースが不足していたり、何等かの理由でPodが起動できなかったりするとFalseになったままになるので、``kubectl describe``などで原因を調査してください。
+
+デフォルトでLoadBalancerが使わて、特に設定なくMetalLBに割り当てているExternal-IP(192.168.100.0/24)のレンジから割り当てられています。
+
+静的にIPアドレスを割り当てる方法は後述しますが、まずはこのままテストしていきます。
 
 :::note
 ここまでで192.168.100.165で、``Host: example.com``が指定されたHTTPリクエストを受け付ける準備ができているはずなので、これをテストしていきます。
@@ -376,3 +429,91 @@ servicecidrs                                                  networking.k8s.io/
 adminnetworkpolicies                anp                       policy.networking.k8s.io/v1alpha1            false        AdminNetworkPolicy
 baselineadminnetworkpolicies        banp                      policy.networking.k8s.io/v1alpha1            false        BaselineAdminNetworkPolicy
 ```
+
+# 静的なIPアドレスの割り当て
+
+停電や事故などでクラスター全体の再起動がかかるとMetalLBから自動的に割り当てられるExternal-IPの順序が変化する可能性があります。
+
+静的にMetalLBのアドレスプールの後ろ側から静的にIPアドレスを指定しておく方が安全です。
+
+このために必要な設定は次のようになります。
+
+1. ``kind: EnvoyProxy``を作成し、MetalLBにリクエストするIPアドレスを指定する
+2. ``kind: Gateway``の中で作成したEnvoyProxyのパラメータを指定します
+
+## EnvoyProxyの作成
+
+次のようなYAMLファイルを準備して、``ns/gateway-system``に設定します。
+
+このEnvoyProxyオブジェクトは``kind: Gateway``と同じnamespaceに配置します。
+
+```yaml:00.envoyproxy.yaml
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: example-proxy-config
+  namespace: gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: LoadBalancer
+        annotations:
+          metallb.universe.tf/loadBalancerIPs: "192.168.110.221"
+          metallb.universe.tf/address-pool: "primary"
+```
+
+## Gatewayの変更
+
+最初に準備したYAMLファイルに作成したEnvoyProxyを参照するように``.spec.infrastructure.parametersRef``セクションを加えます。
+
+```yaml:01.gateway.yaml(変更版)
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shared-gateway
+  namespace: gateway-system
+spec:
+  gatewayClassName: envoy-gateway
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: example-proxy-config
+  listeners:
+  - name: https
+    port: 443
+    protocol: HTTPS
+    hostname: "example.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: example-com-tls
+    allowedRoutes:
+      namespaces:
+        from: All
+```
+
+## 設定の反映
+
+これらのYAMLファイルを反映すると自動的にGatewayのADDRESSが変化しました。
+
+# まとめ
+
+ingress-nginxでは変更時にnginx.confファイルが内部で再生成、読み直しされるタイミングが発生します。
+
+また利用側の都合で複数のIngressを同タイミングで作成したり、Endpoints側のServiceが頻繁に再作成されるような状況が発生する場合がある環境です。
+
+これらの状況が重なってingress-nginxを経由するサービスが少し不安定になることがあるように感じてきました。
+
+もう少し使ってみないと分かりませんが、Gateway APIに移行したことで、より宣言的にトラフィックが定義できるようになってシステム全体の安定感は増した印象です。
+
+
+
+
+
+
+
