@@ -1,14 +1,14 @@
 ---
 title: RabbitMQをkube-prometheusでモニター & 監視した作業ログ
 tags:
-  - kubernetes
+  - RabbitMQ
   - grafana
+  - kubernetes
   - Jsonnet
   - kube-prometheus
-  - RabbitMQ
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-05-10T19:02:19+09:00'
+id: b94b7d48f3425e02300a
 organization_url_name: null
 slide: false
 ignorePublish: false
