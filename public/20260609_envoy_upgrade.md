@@ -1,12 +1,12 @@
 ---
 title: Envoy Gateway を v1.7.2 から v1.8.1 にアップグレードした時の作業メモ
 tags:
-  - envoy
   - kubernetes
+  - envoy
   - EnvoyGateway
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-06-09T12:53:44+09:00'
+id: e3a7d73993eee75ac3f8
 organization_url_name: null
 slide: false
 ignorePublish: false
