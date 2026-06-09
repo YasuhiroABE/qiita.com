@@ -309,10 +309,17 @@ spec:
     - path:
         type: PathPrefix
         value: /httpbin
+    timeouts:
+      request: 15s
+      backendRequest: 15s
     backendRefs:
     - name: my-httpbin
       port: 80
 ```
+
+:::note
+【2026/06/09追記】.spec.rules.timeouts を追加しました。デフォルトが15秒であるためファイルのダウンロード等のデータ生成処理を行う場合には長めにするなど適宜調整してください。
+:::
 
 これを適用すると一見、ちゃんとした状態にみえます。
 
