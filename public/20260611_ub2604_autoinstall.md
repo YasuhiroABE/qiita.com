@@ -4,10 +4,10 @@ tags:
   - Ubuntu
   - Ansible
   - AutoInstall
-  - Ubuntu26.04
+  - ubuntu26.04
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-06-11T14:33:51+09:00'
+id: beb0741319f0e6eec167
 organization_url_name: null
 slide: false
 ignorePublish: false
