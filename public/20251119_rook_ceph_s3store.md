@@ -27,7 +27,7 @@ Minioの雲行きが少し怪しいので移行先として検証しておこう
 # 環境 & 構成
 
 * Kubernetes - v1.32.8
-* Rook - v1.8.8 (Ceph v19.2.3)
+* Rook - v1.18.8 (Ceph v19.2.3)
 
 Rook/Cephは稼動していて、StorageClassには **rook-ceph-block** と **rook-cephfs** は設定済みの状態です。
 
