@@ -3,11 +3,11 @@ title: Apache2をTLSとHTTP/2に対応させてみた
 tags:
   - Ubuntu
   - apache2
-  - tls
+  - TLS
   - http2
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-06-22T14:07:10+09:00'
+id: b046a7f4cfe0cd29acc8
 organization_url_name: null
 slide: false
 ignorePublish: false
