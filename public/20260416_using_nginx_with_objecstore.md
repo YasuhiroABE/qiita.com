@@ -231,6 +231,60 @@ $ curl https://kubecamp.example.com/yasu-abe/
 Hello World, yasu-abe at Fri Apr 17 01:32:26 UTC 2026
 ```
 
+### Tips - MinIOからの移行時に遭遇したTips
+
+ObjectStoreはフォルダという概念はないので、ファイル名に'/'文字を含められる特殊でフラットなファイルシステム、少し前のオフコンのようなファイルシステムです。
+
+MinIOでファイルを配置していたDjangoアプリをそのまま移行したところ次のようなファイル名になっていました。
+
+```bash:Rook/CephのObjectStoreに移行して作成したファイル
+# s5cmd --endpoint-url http://$BUCKET_HOST:$BUCKET_PORT ls s3://$BUCKET_NAME/*
+2026/06/26 00:32:43            129854  /app-dev@example.com/7a0f10ca16ff4d39b3e62f292226b6cc/test.pdf
+```
+
+分かりにくいですが、ファイル名が'/'で始まっています。
+
+データを移行しようと思ってファイルを転送すると少し違った名前になってしまいます。
+
+まずバックアップ全体を``kubectl cp``コマンドでtoolbox Podに転送しておきます。
+
+```bash:準備してあるバックアップファイル
+$ ls -F user01\@example.com/
+0e9b10fb288f4548b79f039e45a1013a/
+863cd09522dbbec287bcab4ba25e6896/
+...
+
+## Podへの転送
+$ sudo kubectl cp -r user01\@example.com/  $(sudo kubectl get pod -l app=alpine-toolbox -o jsonpath={.items[0].metadata.name}):
+```
+
+続いて``app=alpine-toolbox``に入り、``s5cmd``コマンドを操作します。
+
+```bash:バックアップファイルをBucketにコピーした様子
+# s5cmd --endpoint-url http://$BUCKET_HOST:$BUCKET_PORT cp user01\@example.com s3://$BUCKET_NAME/
+...
+# s5cmd --endpoint-url http://$BUCKET_HOST:$BUCKET_PORT ls s3://$BUCKET_NAME/*
+2026/06/26 00:32:43            129854  /app-dev@example.com/7a0f10ca16ff4d39b3e62f292226b6cc/test.pdf
+2026/06/26 00:57:55            129272  user01@example.com/0e9b10fb288f4548b79f039e45a1013a/test01.pdf
+...
+```
+
+ファイル名の先頭が``/user01@``で始まって欲しいのにうまくいきません。
+
+いくつか解決方法はありますが、まず試す方法は目的のディレクトリ名を明示的に``/user01@``で始まるパスの下に配置する点です。
+
+```bash:'/'で始まるファイルを配置する方法
+# s5cmd --endpoint-url http://$BUCKET_HOST:$BUCKET_PORT cp user1\@example.com/361daabe94764cdfabd1d2601debc020  s3://$BUCKET_NAME//user1\@example.com/
+```
+
+ただ、複数のディレクトリがあると面倒なので、次のようにもできます。
+
+```bash:'/'で始まるファイルを配置する方法02
+# s5cmd --endpoint-url http://$BUCKET_HOST:$BUCKET_PORT cp user1\@example.com s3://$BUCKET_NAME//
+```
+
+ディレクトリが存在しないため、パス区切り文字('/')もただのファイル名なので、少しややこしいことになっていました。
+
 # さいごに
 
 個人的には``ReadWriteMany``でアクセスができるFilesystemタイプの``sc/rook-cephfs``が使いやすいと感じています。
