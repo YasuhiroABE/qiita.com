@@ -5,7 +5,7 @@ tags:
   - Rook
   - ObjectStore
 private: false
-updated_at: '2026-04-17T11:30:07+09:00'
+updated_at: '2026-06-26T17:01:43+09:00'
 id: 4e3e7da4cdbedeea4488
 organization_url_name: null
 slide: false

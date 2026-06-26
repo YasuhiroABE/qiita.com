@@ -1,13 +1,13 @@
 ---
 title: VeleroでRook/CephのObjectStorageにバックアップを取得してみた
 tags:
-  - velero
-  - rook
-  - MinIO
   - backup
+  - minio
+  - Rook
+  - velero
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-06-26T17:01:43+09:00'
+id: 3d4c438a66078aeba621
 organization_url_name: null
 slide: false
 ignorePublish: false
