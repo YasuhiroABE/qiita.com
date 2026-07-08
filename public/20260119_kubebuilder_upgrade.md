@@ -9,6 +9,8 @@ id: 6fd88bdf4e8539a2a21b
 organization_url_name: null
 slide: false
 ignorePublish: false
+posting_campaign_uuid: db2106c2a38d86187ffc
+agreed_posting_campaign_term: true
 ---
 # はじめに
 

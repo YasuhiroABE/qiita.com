@@ -10,6 +10,8 @@ id: 51336d68c5a51b33fd5a
 organization_url_name: null
 slide: false
 ignorePublish: false
+posting_campaign_uuid: null
+agreed_posting_campaign_term: false
 ---
 
 # コンピュータ・サイエンス(CS)とは？

@@ -8,6 +8,8 @@ id: df97f321fdb9cb9de65e
 organization_url_name: null
 slide: false
 ignorePublish: false
+posting_campaign_uuid: null
+agreed_posting_campaign_term: false
 ---
 
 Ansible Galaxyでのワークフローは、"ansible-role_name"で始まるリポジトリをGithubに登録し、Ansible Galaxy側で"ansible-"を取り除いた"role_name"を名前として登録する流れになっていました。
