@@ -13,39 +13,45 @@ ignorePublish: false
 ---
 # はじめに
 
-ingress-nginxがEnd of Serviceになってセキュリティパッチを含めた全てのサービス提供が終了しました。
+IngressはKubernetesが提供する仕様です。
+
+この実装であるingress-nginxがEnd of Serviceになってセキュリティパッチを含めた全てのサービス提供が終了しました。
+
+Ingressは引き続き提供されるものの機能は凍結されているので、今後の発展は期待できません。
 
 nginxは馴染みがあるので便利なツールでしたが、細かい制御では課題も感じていたところです。
 
-とはいえkubesprayもv2.30.0を最後に提供を終了しているので、現在の最新版ではingress-nginxを更新することはできません。
+とはいえkubesprayもv2.30.0を最後に提供を終了しているので、現在の最新版ではingress-nginxを導入することはできません。
 
-この機会に後継のGateway APIに移行することにしたので、その際のメモを残しておきます。
+この機会にIngressから後継のGateway APIに移行することにしたので、その際のメモを残しておきます。
 
 # 作業全体の流れ
 
-まずGateway APIはIngressと同様に実装から切り離された抽象度の高いAPI(規約)です。
+Gateway APIはIngressと同様にKubernetesが提供する仕様の1つです。
 
-新しいだけあってモダンなAPIの実装として参考になりそうです。
+新しいだけあって、KubernetesのモダンなAPIの設計として参考になると思います。
 
 https://gateway-api.sigs.k8s.io/
 
-実際に制御を行うコントローラーとしてはいくつかの実装がありますが、今回はEnvoy Gatewayをバックエンドに導入することにしました。
+実際に制御を行うコントローラーとしてはいくつかの実装がありますが、今回はEnvoy Gatewayを導入することにしました。
 
 https://gateway.envoyproxy.io/
 
-このEnvoy Gatewayがingress-nginxの代わりに(移行が終るまでは並行して)動作することになります。
+## IngressとGatewayの共存
 
-またいきなり移行はできないので、ingress-nginxと同様のホスト名でサービスを行うようにして、URLのsub-path毎に移行するようにします。
+このEnvoy Gatewayがingress-nginxの代りにReverse Proxy Serverとして動作することになります。
 
-また``ingress2gateway``といったツールも提供されていますが、まずはGatewayの実装を導入する必要がありそうです。x
+いきなり移行はできないので、ingress-nginxと同様のホスト名でサービスを行うようにして、フロントエンド側からURLのsub-path毎に接続先を変更して移行するようにします。
+
+また``ingress2gateway``といったツールも提供されていますが、まずはGatewayの実装を導入する必要がありそうです。
 
 https://github.com/kubernetes-sigs/ingress2gateway
 
 ## 全体の構成
 
-一見すると``ns/envoy-gateway-system``と``ns/gateway-system``の2つにnamespaceを分割する必要性はなさそうに思えますが、Envoy Gatewayは更新などの際にHelmによってupgradeされます。
+一見すると``ns/envoy-gateway-system``と``ns/gateway-system``の2つにnamespaceを分割する必要性はなさそうに思えますが、Envoy Gatewayは更新などの際にHelmを利用する手順がガイドされています。
 
-混乱を避けるためにシステム管理者が設定するGateway全体の設定(ns/gateway-system)と、Helmが管理する領域(ns/envoy-gateway-system)を分けています。
+実際にアップグレードを試して、インストール時にHelmを使用していない場合はアップグレード時にもHelmを必要としないことは確認したのですが、混乱を避けるためにシステム管理者が設定するドメイン固有の設定(ns/gateway-system)部分と、アップグレードなどの影響を受ける本体部分(ns/envoy-gateway-system)を分けています。
 
 ```plantuml:
 package Kubernetes {
@@ -92,7 +98,7 @@ GTW -- Route
 
 ## サービス環境
 
-外部からはNginxで構成しているフロントエンドのReverse Proxy Serverを中継してバックエンドのPrivate Networkに配置しているKubernetesに接続しています。
+外部からはnginxで構成しているフロントエンドのReverse Proxy Serverを中継してバックエンドのPrivate Networkに配置しているKubernetesに接続しています。
 
 ```plantuml:
 actor "User / Web Browser" AS UW
@@ -117,13 +123,24 @@ TLS -- NX
 TLS -- GTW
 ```
 
-``Gateways(gtw) Instance``ではNginxに設置しているTLS証明書を流用してHTTPS(Port:443)のみで接続を受け付けています。
+``Gateways(gtw) Instance``ではnginxに設置しているTLS証明書を流用してHTTPS(Port:443)のみで接続を受け付けています。
 
-このためフロントエンドのNginxでは必要なヘッダーを付与しないと接続に失敗することになります。
+このためフロントエンドのnginxでは必要なヘッダーを付与しないと接続に失敗することになります。
 
 具体的にはHTTPヘッダーの``Host:``行にTLS証明書のSANと同じ名前を指定する必要があります。
 
-SANをある程度コントロールできる状況であればバックエンドのIPアドレスを含めても良いかもしれませんが、結局``Envoy Gateway``では``Host:``行をみてルーティングするので、TLSなネットワークレイヤーと、Gatewaysのアプリケーションレイヤーを分けるよう意識しないと混乱するかもしれません。
+SANをある程度コントロールできる状況であればバックエンドのIPアドレスを含めることで、設定のミスマッチによるエラーを回避できるかもしれません。
+
+結局``Envoy Gateway``では``Host:``行をみてルーティングしているので、フロントエンド側を適切に設定しましょう。
+
+```nginx:フロントエンド側のnginxの設定から抜粋
+    proxy_set_header    Host    $host;
+    proxy_set_header    X-Real-IP    $remote_addr;
+    proxy_set_header    X-Forwarded-Host      $host;
+    proxy_set_header    X-Forwarded-Server    $host;
+    proxy_set_header    X-Forwarded-For    $proxy_add_x_forwarded_for;
+    proxy_set_header    X-Forwarded-Proto https;
+```
 
 # 環境
 
@@ -165,6 +182,8 @@ $ sudo kubectl apply --server-side -f https://github.com/envoyproxy/gateway/rele
 
 この状態ではGatewayClass(gc)オブジェクトが存在しないため、ここに``kind: GatewayClass``を定義します。
 
+このGatewayClassはクラスタースコープなので、特定のnamespaceには所属しません。
+
 ```yaml:01.gatewayclass.yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -177,7 +196,7 @@ spec:
 
 このYAMLファイルはLLM/Geminiに生成させています。
 
-このままでもMetalLBから自動的にExternal-IPが割り当てられて利用できますが、IPを静的に固定するため後で編集しています。
+このままでもMetalLBから自動的にExternal-IPが割り当てられて利用できますが、IPを固定するため後で編集しています。
 
 ## Gateway用namespaceの作成
 
@@ -208,6 +227,10 @@ setup-sec:
 delete-sec:
         sudo kubectl -n $(NS) delete secret example.com-tls
 ```
+
+フロントエンドのnginxでTLS証明書を更新したタイミングで同じファイルをtls/ディレクトリに配置し、``make delete-sec && make setup-sec`` で新しいファイルに更新します。
+
+反映にはリスタートは必要ないはずです。
 
 ## Gatewayオブジェクトの作成
 
@@ -508,6 +531,14 @@ spec:
 
 これらのYAMLファイルを反映すると自動的にGatewayのADDRESSが変化しました。
 
+## ingress-nginxとの違い
+
+nginxとenvoyは根本的に違うので、気になった点はデータ転送時のタイムアウトの挙動についてです。
+
+Envoy Gateway側では最大データサイズを指定する方法はなさそうなので、アプリケーション側でのデータサイズ制限を有効にし、Envoyでの接続時間のタイムアウト時間の調整を行っています。
+
+いまのところDjangoで作成したアプリケーションから1GiB程度のZIPファイルのダウンロードには問題なく対応できています。
+
 # まとめ
 
 ingress-nginxでは変更時にnginx.confファイルが内部で再生成、読み直しされるタイミングが発生します。
@@ -517,10 +548,4 @@ ingress-nginxでは変更時にnginx.confファイルが内部で再生成、読
 これらの状況が重なってingress-nginxを経由するサービスが少し不安定になることがあるように感じてきました。
 
 もう少し使ってみないと分かりませんが、Gateway APIに移行したことで、より宣言的にトラフィックが定義できるようになってシステム全体の安定感は増した印象です。
-
-
-
-
-
-
 
