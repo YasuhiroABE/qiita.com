@@ -4,7 +4,7 @@ tags:
   - Django
   - RelocatableApp
 private: false
-updated_at: '2025-05-22T12:57:24+09:00'
+updated_at: '2026-07-10T09:25:18+09:00'
 id: 7652a3388c0c22321939
 organization_url_name: null
 slide: false
