@@ -125,7 +125,7 @@ rook-cephfs                 rook-ceph.cephfs.csi.ceph.com   Delete          Imme
 
 名前が違うので、この点は実運用を考慮して変更した方が良いかもしれません。
 
-::note
+:::note
 本番環境では``rook-ceph-bucket``を利用しています。
 :::
 
