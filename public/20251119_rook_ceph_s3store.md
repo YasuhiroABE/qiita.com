@@ -390,7 +390,7 @@ function setup-s5cmd() {
 }
 
 function exec-bash() {
-  kc exec -it $(get_alpine_podname) -- sh
+  kc exec -it $(get_alpine_podname) -- bash
 }
 ```
 
