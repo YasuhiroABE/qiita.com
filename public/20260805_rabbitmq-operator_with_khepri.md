@@ -18,7 +18,9 @@ agreed_posting_campaign_term: false
 
 この状態からOperatorを``v2.20.1`` → ``v2.21.1`` → ``v2.22.4``と変更していく予定です。
 
-Operatorの``v2.21.0``からRabbitMQは``v4.2.6``に更新されているため、``v2.21.1``を適用した段階で、内部DBが``khepri``へと移行します。
+Operatorの``v2.21.0``からRabbitMQは``v4.2.6``に更新されているため、``v2.21.1``を適用した段階で、内部DBを``khepri``へ移行します。
+
+なお移行自体は自動では行われず、feature flagの``khepri_db``を有効にしたタイミングで実施されます。
 
 たぶん大丈夫だと思うのですが、この部分が一番神経を使うところかなと思われます。
 
@@ -63,7 +65,7 @@ $ sudo kubectl -n rabbitmq-system edit rabbitmqclusters rabbitmq
 
 ## "image: rabbitmq:4.1.3-management" 行を削除し、編集結果を保存してからEditorを終了する
 
-## rabbitmq:4.2.6-managementにimage:が変更されていることを確認すう
+## rabbitmq:4.2.6-managementにimage:が変更されていることを確認する
 $ sudo kubectl -n rabbitmq-system get rabbitmqclusters rabbitmq -o yaml |grep image:
 
 ## 全てのPodが再起動するまで待機する
@@ -72,7 +74,7 @@ $ sudo kubectl -n rabbitmq-system get pod -w
 
 全てのPodが更新されたら、feature_flagsを全て有効にします。
 
-```bash:
+```bash:feature_flagsの確認と有効化
 ## 現状の確認 ("khepri_db disabled" の確認)
 $ sudo kubectl -n rabbitmq-system exec -it rabbitmq-server-0  -- rabbitmqctl list_feature_flags
 
@@ -150,7 +152,7 @@ virtual_host_metadata   enabled
 
 v2.21.1と同様にv2.22.4を適用したところ次のようなエラーが出力されました。
 
-```text:
+```text:v2.22.4適用時に発生したエラー
 $ sudo kubectl -n rabbitmq-system apply -f https://github.com/rabbitmq/cluster-operator/releases/download/v2.22.4/cluster-operator.yml
 namespace/rabbitmq-system unchanged
 customresourcedefinition.apiextensions.k8s.io/rabbitmqclusters.rabbitmq.com unchanged
@@ -170,9 +172,9 @@ Error from server (InternalError): error when creating "https://github.com/rabbi
 Error from server (InternalError): error when creating "https://github.com/rabbitmq/cluster-operator/releases/download/v2.22.4/cluster-operator.yml": Internal error occurred: failed calling webhook "webhook.cert-manager.io": failed to call webhook: Post "https://cert-manager-webhook.cert-manager.svc:443/mutate?timeout=10s": service "cert-manager-webhook" not found
 ```
 
-``cert-manager``が存在しないためなのはすぐに分かるのですが、Operatorの再起動はすぐに始まっていていますが、止まっています。
+``cert-manager``が存在しないためなのはすぐに分かるのですが、Operatorの再起動はすぐに始まったものの、途中で止まってしまいました。
 
-```bash:
+```bash:Operatorの新しいPodが起動しない状態
 $ sudo kubectl -n rabbitmq-system get pod
 NAME                                         READY   STATUS              RESTARTS   AGE
 rabbitmq-cluster-operator-78d765df49-xh7rg   0/1     ContainerCreating   0          2m36s
@@ -213,10 +215,10 @@ $ . venv/k8s/bin/activate
 (k8s) $ ansible kube_node -i inventory/mycluster/inventory.ini -m command -a 'uname -n'
 
 ## tagsを指定してcluster.ymlの実行
-$ ansible-playbook cluster.yml -b -i inventory/mycluster/inventory.ini -e kube_version=1.34.3 --tags=apps
+(k8s) $ ansible-playbook cluster.yml -b -i inventory/mycluster/inventory.ini -e kube_version=1.34.3 --tags=apps
 ```
 
-最終的にRabbitMQ Operator v2.22.4のcluster-operator.ymlを再度適用して、CRDsを更新します。
+``cert-manager``の導入後に、RabbitMQ Operator v2.22.4のcluster-operator.ymlを再度適用して、エラーになっていたオブジェクトを作成します。
 
 次に止まっているPodを起動しているreplicasetオブジェクトを削除してPodを作り直すことで無事にOperatorが再起動しました。
 
@@ -228,9 +230,9 @@ RabbitMQ自体のバージョンはdefaultが4.3.4に更新されているので
 
 https://www.rabbitmq.com/kubernetes/operator/using-operator#pause
 
-## v2.22.4でもenable_feature_flags allが必要
+## v2.22.4でもenable_feature_flag allが必要
 
-なおfeature_flagsをすべて有効にする必要があります。
+RabbitMQがv4.3.4になったことで新しいfeature_flagsが追加されているため、ここでも改めてすべて有効にする必要があります。
 
 ```text:v2.22.4を適用後にdisabledになっているfeature_flags
 Listing feature flags ...
@@ -251,6 +253,4 @@ ReleaseNoteにはcert-managerが必須という記述はなかったので油断
 追加自体は難しい作業ではないので、すぐに対応することができました。
 
 この手順で本番環境のRabbitMQもバージョンを上げていく予定です。
-
-
 
