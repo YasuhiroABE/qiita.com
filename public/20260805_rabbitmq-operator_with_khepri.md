@@ -48,6 +48,8 @@ cluster-operator.ymlファイルはGitHubのReleasesページにリンクが掲�
 
 https://github.com/rabbitmq/cluster-operator/releases
 
+## RabbitMQ Operatorの更新
+
 具体的なコマンドラインは次のようになります。
 
 ```bash:v2.21.1更新時の手順
@@ -71,6 +73,8 @@ $ sudo kubectl -n rabbitmq-system get rabbitmqclusters rabbitmq -o yaml |grep im
 ## 全てのPodが再起動するまで待機する
 $ sudo kubectl -n rabbitmq-system get pod -w
 ```
+
+## 全てのfeature flagsの有効化
 
 全てのPodが更新されたら、feature_flagsを全て有効にします。
 
@@ -117,6 +121,8 @@ user_limits     enabled
 virtual_host_metadata   enabled
 ```
 
+## 【v2.21.x適用時】Khepri_DBへの移行状況の確認
+
 有効化した時の``rabbitmq-server-0``のログは次のようになっていました。
 
 ```text:文字列"khepri"を含むログ出力の抜粋
@@ -146,7 +152,15 @@ virtual_host_metadata   enabled
 
 結果的には何も問題なくスムーズにkhepri_dbへの移行が完了しました。
 
-# v2.22.4を適用した時のエラー対応
+## v2.22.4の適用
+
+基本的には同一の手順になります。
+
+# 作業時のエラー対応
+
+大きな問題ではなかったのですが、v2.22.4がcert-managerを要求したため、追加の作業が必要でした。
+
+## v2.22.4を適用した時のエラー対応
 
 影響が一番大きかったのが、``cert-manager``を要求してきたことです。
 
@@ -196,6 +210,8 @@ Events:
   Warning  FailedMount  14s (x10 over 4m23s)  kubelet            MountVolume.SetUp failed for volume "cluster-operator-webhook-certs" : secret "cluster-operator-webhook-server-cert" not found
 ```
 
+### cert-managerの導入
+
 急遽kubesprayからaddons.ymlファイルを``cert_manager_enabled: true``の部分だけ変更してplaybookを動かし、``cert-manager``を導入します。
 
 ```bash:kubespray-v2.30.0から追加でcert-managerをdeploy
@@ -230,7 +246,7 @@ RabbitMQ自体のバージョンはdefaultが4.3.4に更新されているので
 
 https://www.rabbitmq.com/kubernetes/operator/using-operator#pause
 
-## v2.22.4でもenable_feature_flag allが必要
+### v2.22.4でもenable_feature_flag allが必要
 
 RabbitMQがv4.3.4になったことで新しいfeature_flagsが追加されているため、ここでも改めてすべて有効にする必要があります。
 
