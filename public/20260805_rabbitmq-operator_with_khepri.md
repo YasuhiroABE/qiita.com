@@ -4,7 +4,7 @@ tags:
   - RabbitMQ
   - kubernetes
 private: false
-updated_at: '2026-08-15T21:55:05+09:00'
+updated_at: '2026-08-16T13:34:15+09:00'
 id: 10471f76dba3678dc7e5
 organization_url_name: null
 slide: false
