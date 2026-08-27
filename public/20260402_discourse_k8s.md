@@ -307,6 +307,8 @@ spec:
 
 ```
 
+起動時にPostgreSQLのv17クライアントを導入するように``command:``, ``args:``を加えています。
+
 ```yaml:09.deploy-discourse.yaml
 ---
 apiVersion: apps/v1
@@ -326,7 +328,7 @@ spec:
     spec:
       initContainers:
       - name: discourse-init
-        image: discourse/discourse:2026.1.3-amd64
+        image: discourse/discourse:2026.7.2
         command:
           - /bin/bash
           - -c
@@ -379,7 +381,12 @@ spec:
           mountPath: /shared
       containers:
       - name: discourse
-        image: discourse/discourse:2026.1.3-amd64
+        image: discourse/discourse:2026.7.2
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            apt-get update && apt-get install -y postgresql-client-17
+            exec /sbin/boot
         ports:
         - containerPort: 80
           name: http
@@ -558,3 +565,44 @@ do
   sudo kubectl -n discourse2 exec -it ${pod} -- apt-get install -y postgresql-client-17
 done
 ```
+
+恒久的な対応としては、起動時にパッケージを導入するようにしました。
+
+```diff:
+diff --git a/discourse/09.deploy-discourse.yaml b/discourse/09.deploy-discourse.yaml
+index 6b1d8d8..98bed17 100644
+--- a/discourse/09.deploy-discourse.yaml
++++ b/discourse/09.deploy-discourse.yaml
+@@ -78,6 +78,11 @@ spec:
+       containers:
+       - name: discourse
+         image: docker.io/discourse/discourse:2026.7.2
++        command: ["/bin/sh", "-c"]
++        args:
++          - |
++            apt-get update && apt-get install -y postgresql-client-17
++            exec /sbin/boot
+         ports:
+         - containerPort: 80
+           name: http
+```
+
+最終的に``/sbin/boot``を実行していますが、ここに何を指定するかは``CMD``や``ENTRYPOINT``に指定されているコマンドを調べる必要があります。
+
+Dockerfileの内容はhub.docker.comを確認するか、``podman image inspect``を使用します。
+
+https://hub.docker.com/layers/discourse/discourse/2026.7.2
+
+
+```bash:
+$ podman image inspect docker.io/discourse/discourse:2026.7.2
+
+...
+               "Cmd": [
+                    "/sbin/boot"
+               ],
+...
+```
+
+掲載していたYAMLファイルについては修正を反映した最新のイメージ指定にしています。
+
