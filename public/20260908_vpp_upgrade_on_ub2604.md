@@ -3,10 +3,10 @@ title: VPPを利用しているサーバーのUbuntu 26.04へのアップグレ�
 tags:
   - Network
   - Ubuntu
-  - vpp
+  - v++
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-09-08T16:41:06+09:00'
+id: 114edc07fe88b5f21ec4
 organization_url_name: null
 slide: false
 ignorePublish: false
