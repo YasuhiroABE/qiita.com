@@ -1,11 +1,11 @@
 ---
 title: HP MicroServer Gen8にUbuntu 26.04を入れたらSATAドライブが正常に認識されなくなった件
 tags:
-  - Ubuntu26.04
+  - ubuntu26.04
   - SATA
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-09-14T12:50:46+09:00'
+id: cdc1b7b5fbb23045293e
 organization_url_name: null
 slide: false
 ignorePublish: false
