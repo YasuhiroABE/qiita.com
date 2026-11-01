@@ -35,6 +35,7 @@ status:
 
 .PHONY: git-push
 git-push:
+	egrep -5 "^tags:" public/* > title.txt
 	git push
 	sleep 60
 	git pull
