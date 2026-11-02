@@ -6,7 +6,7 @@ tags:
   - Ansible
   - ansible-playbook
 private: false
-updated_at: '2024-01-05T09:38:38+09:00'
+updated_at: '2026-11-02T09:46:42+09:00'
 id: 9ebcda4cd8503df9ad81
 organization_url_name: null
 slide: false
