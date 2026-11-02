@@ -1,5 +1,5 @@
 ---
-title: AnsibleでLinuxホストのVMware Workstation Pro 16に実験環境を構築する
+title: AnsibleでLinuxホストのVMware Workstation Proに実験環境を構築する
 tags:
   - Ubuntu
   - vmware
@@ -16,11 +16,13 @@ agreed_posting_campaign_term: false
 ---
 # はじめに
 
-Ryzen 7000シリーズのリリースを控えて5000シリーズのCPUが安くなっています。実際に7000シリーズが出たら待っていれば良かったと思うのかもしれませんが、当初リリースされるJEDEC規格のDDR5-4800やOC版のDDR5-5600は価格の割にそんなに魅力的でもないですし、単体CPUのパフォーマンスはそんなに必要ないのでコア数は多い方が嬉しいですが、基本的な構成に変化はないようです。それでもAVX-512命令に対応する点は魅力的に映ります。
-
 Ryzen 5900Xの価格が最高値の半額近くに下ったので、この機会にほとんど使わなくなったOpteron 3280 (32GB, 128GB SATA/SSD, 3Ware 9750 RAID10 4TB)で構築したWSの内部を一新しました。仮想化環境もこれまで単体テスト用だったものを、Kubernetesクラスターのテストができるように変更することにしました。
 
 狙いはDNSからVMのホスト名、IPアドレスを、正引き、逆引きできるようにしつつ、固定IPも利用できるようにすることです。こんな環境があるとkeepalivedを使ったload balancerや、Kubernetesクラスターのテストなど本格的なアプリケーションのテストが十分に行えます。
+
+:::note
+【2026/11/02更新】Ubuntu 26.04にアップグレードしたタイミングで、VMを再作成したので内容を見直しました。
+:::
 
 ## 参考資料
 
@@ -41,36 +43,40 @@ Ryzen 5900Xの価格が最高値の半額近くに下ったので、この機会
 
 記事中にもリンクがありますが、ここにまとめておきます。
 
-* [GitHub YasuhiroABE/ansible-setup-vmware-devhome](https://github.com/YasuhiroABE/ansible-setup-vmware-devhome.git) (この記事で扱うansible-playbookの実行に必要なプロジェクト)
+https://github.com/YasuhiroABE/ansible-setup-vmware-devhome.git
 
 # 作業環境
 
-* OS: Ubuntu 22.04.1 LTS
+* OS: Ubuntu 22.04.1 LTS → Ubuntu 26.04.1 LTS
 * CPU: Ryzen 5900X
 * Memory: 64GB (DDR4-3200 ECC UDIMM)
-* Drive#1: 2TB (NVMe PCIe gen3)
-* Drive#2: 4TB (/home, SATA RAID-10, 3ware 9750)
-* GPU: NVIDIA Quadro P620 (2GB)
-* Monitor: 4K x2
+* Drive#1: 2TB (NVMe PCIe gen4)
+* GPU: NVIDIA Geforce 5060Ti (16GB)
+* Monitor: Displayport x2 (4K)
 
 # アーキテクチャ
 
-VMware Workstation Pro 16を動かすことの最大のメリットは、[仮想ネットワークエディタ](https://docs.vmware.com/jp/VMware-Workstation-Pro/16.0/com.vmware.ws.using.doc/GUID-AC956B17-30BA-45F7-9A39-DCCB96B0A713.html)が利用できる点です。
+VMware Workstation Proを動かすことの最大のメリットは、**仮想ネットワークエディタ**が利用できる点です。
+
+https://techdocs.broadcom.com/us/en/vmware-cis/desktop-hypervisors/workstation-pro/26H1/using-vmware-workstation-pro/using-the-virtual-network-editor.html
 
 デフォルトでは、vmnet0, vmnet1, vmnet8の3つのネットワークが定義されています。ここに、vmnet2(10.1.1.0/24)とvmnet3(10.2.1.0/24)の2つのトワークを追加し、トップレベルのVM(devhome)に接続してテスト環境を構成しています。
 
 仮想ネットワークエディタの設定は次のようになっています。
 
-|Name |Type |External Connection |Host Connection |DHCP |Subnet IP Address|
-|-----|-----|--------------------|----------------|-----|-----------------|
-|vmnet0|bridged|auto-bridging|-             |-    |-
-|vmnet1|host-only|none|vmnet1     |yes  |172.16.240.0/24     |
-|vmnet2|host-only|none|none       |no   |10.1.1.0/24         |
-|vmnet3|host-only|none|none       |no   |10.2.1.0/24         |
-|vmnet8|NAT      |NAT|vmnet8     |yes  |192.168.189.0/24    |
+|Name |Type |External Connection |Host Connection |DHCP            |Subnet IP Address|
+|------|---------|---------------|----------------|----------------|-----------------|
+|vmnet0|bridged  |auto-bridging  |-               |-               |-
+|vmnet1|host-only|none           |yes             |172.16.240.0/24 |
+|vmnet2|host-only|none           |no              |10.1.1.0/24     |
+|vmnet3|host-only|none           |no              |10.2.1.0/24     |
+|vmnet8|NAT      |NAT            |vmnet8          |yes             |192.168.189.0/24
 
-> 少なくともLinux環境のVMware Workstation Pro 16.2.4ではHost Connectionのチェックを付けた状態で"Save"することで、/dev/vmnet2等が作成されます。/dev/vmnet2等が作成された後はチェックを外して問題ありません。
+:::note
+少なくともLinux環境のVMware Workstation Pro 16.2.4ではHost Connectionのチェックを付けた状態で"Save"することで、/dev/vmnet2等が作成されます。/dev/vmnet2等が作成された後はチェックを外して問題ありません。
+
 これをしないと、VMの設定からネットワーク・アダプタを追加した際にHost-Onlyネットワークの選択肢に/dev/vment2などが表示されません。
+:::
 
 これを利用するdevhomeの設定を含めた全体図は次のようになります。
 
@@ -96,7 +102,7 @@ $ sudo apt install python3-venv make openssh-server git
 ```bash:ansible環境の構築
 $ mkdir -p ansible/devhome
 $ cd ansible/devhome
-$ ansible -m venv venv/ansible
+$ python3 -m venv venv/ansible
 $ . venv/ansible/bin/activate
 (ansible) $ pip install ansible
 (ansible) $ git clone https://github.com/YasuhiroABE/ansible-setup-vmware-devhome.git .
@@ -131,21 +137,21 @@ $ ip addr
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
        valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host 
+    inet6 ::1/128 scope host
        valid_lft forever preferred_lft forever
 2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
     link/ether 00:0c:29:xx:xx:xx brd ff:ff:ff:ff:ff:ff
     altname enp2s1
     inet 192.168.189.129/24 metric 100 brd 192.168.189.255 scope global dynamic ens33
        valid_lft 1450sec preferred_lft 1450sec
-    inet6 fe80::20c:29ff:fe84:7756/64 scope link 
+    inet6 fe80::20c:29ff:fe84:7756/64 scope link
        valid_lft forever preferred_lft forever
 3: ens37: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
     link/ether 00:0c:29:xx:xx:xx brd ff:ff:ff:ff:ff:ff
     altname enp2s5
     inet 10.1.1.1/24 brd 10.1.1.255 scope global ens37
        valid_lft forever preferred_lft forever
-    inet6 fe80::20c:29ff:fe84:7760/64 scope link 
+    inet6 fe80::20c:29ff:fe84:7760/64 scope link
        valid_lft forever preferred_lft forever
 4: ens38: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
     link/ether 00:0c:29:xx:xx:xx brd ff:ff:ff:ff:ff:ff
